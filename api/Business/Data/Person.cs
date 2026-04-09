@@ -5,7 +5,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace StargateAPI.Business.Data
 {
     [Table("Person")]
-    public class Person
+    public class Person : AuditableEntity
     {
         public int Id { get; set; }
 

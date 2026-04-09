@@ -15,9 +15,11 @@ builder.Services.AddOpenApiDocument(config =>
     config.Version = "v1";
     config.Description = "API for managing astronauts and their duties";
 });
-builder.Services.AddDbContextFactory<StargateContext>(options => 
-    options.UseSqlite(builder.Configuration.GetConnectionString("StarbaseApiDatabase")),
-    ServiceLifetime.Scoped);
+
+builder.Services.AddSingleton<AuditSaveChangesInterceptor>();
+builder.Services.AddPooledDbContextFactory<StargateContext>((serviceProvider, options) => 
+    options.UseSqlite(builder.Configuration.GetConnectionString("StarbaseApiDatabase"))
+           .AddInterceptors(serviceProvider.GetRequiredService<AuditSaveChangesInterceptor>()), 50);
 
 builder.Services.AddMediatR(cfg =>
 {

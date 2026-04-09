@@ -5,7 +5,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace StargateAPI.Business.Data
 {
     [Table("AstronautDetail")]
-    public class AstronautDetail
+    public class AstronautDetail : AuditableEntity
     {
         public int Id { get; set; }
 
@@ -19,7 +19,7 @@ namespace StargateAPI.Business.Data
 
         public DateTime? CareerEndDate { get; set; }
 
-        public virtual Person Person { get; set; }
+        public virtual Person Person { get; set; } = null!;
     }
 
     public class AstronautDetailConfiguration : IEntityTypeConfiguration<AstronautDetail>

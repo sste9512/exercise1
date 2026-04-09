@@ -9,6 +9,7 @@ namespace StargateAPI.Business.Data
         public DbSet<Person> People { get; set; }
         public DbSet<AstronautDetail> AstronautDetails { get; set; }
         public DbSet<AstronautDuty> AstronautDuties { get; set; }
+        public DbSet<AuditLog> AuditLogs { get; set; }
 
         public StargateContext(DbContextOptions<StargateContext> options)
         : base(options)
@@ -19,9 +20,52 @@ namespace StargateAPI.Business.Data
         {
             modelBuilder.ApplyConfigurationsFromAssembly(typeof(StargateContext).Assembly);
 
+            // Apply soft delete query filters to all entities inheriting from AuditableEntity
+            modelBuilder.Entity<Person>().HasQueryFilter(e => !e.IsDeleted);
+            modelBuilder.Entity<AstronautDetail>().HasQueryFilter(e => !e.IsDeleted);
+            modelBuilder.Entity<AstronautDuty>().HasQueryFilter(e => !e.IsDeleted);
+
             //SeedData(modelBuilder);
 
             base.OnModelCreating(modelBuilder);
+        }
+
+        public override int SaveChanges()
+        {
+            UpdateAuditFields();
+            return base.SaveChanges();
+        }
+
+        public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+        {
+            UpdateAuditFields();
+            return await base.SaveChangesAsync(cancellationToken);
+        }
+
+        private void UpdateAuditFields()
+        {
+            var entries = ChangeTracker.Entries<AuditableEntity>();
+
+            foreach (var entry in entries)
+            {
+                switch (entry.State)
+                {
+                    case EntityState.Added:
+                        entry.Entity.CreatedAt = DateTime.UtcNow;
+                        entry.Entity.IsDeleted = false;
+                        break;
+                    case EntityState.Modified:
+                        entry.Entity.UpdatedAt = DateTime.UtcNow;
+                        break;
+                }
+            }
+        }
+
+        public void SoftDelete<T>(T entity) where T : AuditableEntity
+        {
+            entity.IsDeleted = true;
+            entity.DeletedAt = DateTime.UtcNow;
+            Entry(entity).State = EntityState.Modified;
         }
 
         private static void SeedData(ModelBuilder modelBuilder)
