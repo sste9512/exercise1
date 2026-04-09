@@ -5,6 +5,7 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
+    "generate": "openapi-generator-cli generate -g typescript-fetch -i %API_URL%/openapi/v1.json -o src/api --additional-properties=supportsES6=true,useSingleRequestParameter=true,modelPropertyNaming=original",
     "build": "tsc",
     "watch": "tsc --watch",
     "clean": "rimraf dist"
@@ -18,6 +19,7 @@
   "author": "",
   "license": "MIT",
   "devDependencies": {
+    "@openapitools/openapi-generator-cli": "^2.13.4",
     "@types/node": "^20.11.0",
     "rimraf": "^5.0.5",
     "typescript": "^5.3.3"

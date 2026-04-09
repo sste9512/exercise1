@@ -1,39 +1,48 @@
+using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Scalar.AspNetCore;
 using StargateAPI.Business.Commands;
 using StargateAPI.Business.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
+ 
 
 builder.Services.AddControllers();
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddOpenApiDocument(config =>
-{
-    config.Title = "Stargate API";
-    config.Version = "v1";
-    config.Description = "API for managing astronauts and their duties";
-});
+builder.Services.AddOpenApi();
 
 builder.Services.AddSingleton<AuditSaveChangesInterceptor>();
 builder.Services.AddPooledDbContextFactory<StargateContext>((serviceProvider, options) => 
     options.UseSqlite(builder.Configuration.GetConnectionString("StarbaseApiDatabase"))
-           .AddInterceptors(serviceProvider.GetRequiredService<AuditSaveChangesInterceptor>()), 50);
+           .AddInterceptors(serviceProvider.GetRequiredService<AuditSaveChangesInterceptor>())
+           .ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning)), 50);
 
 builder.Services.AddMediatR(cfg =>
 {
     cfg.AddRequestPreProcessor<CreateAstronautDutyPreProcessor>();
+    cfg.AddBehavior(typeof(IPipelineBehavior<,>), typeof(StargateAPI.Business.Pipeline.RetryPipelineBehavior<,>));
     cfg.RegisterServicesFromAssemblies(typeof(Program).Assembly);
 });
 
+// Register a generic MediatR exception handler to map exceptions to Result.Err
+builder.Services.AddTransient(typeof(MediatR.Pipeline.IRequestExceptionHandler<,,>),
+    typeof(StargateAPI.Business.Pipeline.GenericExceptionHandler<,,>));
+
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+using (var scope = app.Services.CreateScope())
+{
+    var contextFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<StargateContext>>();
+    await using var context = await contextFactory.CreateDbContextAsync();
+    await context.Database.MigrateAsync();
+}
+
+
 if (app.Environment.IsDevelopment())
 {
-    app.UseOpenApi();
-    app.UseSwaggerUi();
+    app.MapOpenApi();
+    app.MapScalarApiReference();
 }
 
 app.UseHttpsRedirection();
