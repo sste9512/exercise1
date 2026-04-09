@@ -1,40 +1,53 @@
-﻿using Dapper;
+using Dapper;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 using StargateAPI.Business.Data;
 using StargateAPI.Business.Dtos;
+using StargateAPI.Business.Values;
 using StargateAPI.Controllers;
 
 namespace StargateAPI.Business.Queries
 {
-    public class GetPeople : IRequest<GetPeopleResult>
+    public sealed class GetPeople : IRequest<Result<GetPeopleResult, Exception>>
     {
 
     }
 
-    public class GetPeopleHandler : IRequestHandler<GetPeople, GetPeopleResult>
+    public sealed class GetPeopleHandler : IRequestHandler<GetPeople, Result<GetPeopleResult, Exception>>
     {
-        public readonly StargateContext _context;
-        public GetPeopleHandler(StargateContext context)
+        private readonly IDbContextFactory<StargateContext> _contextFactory;
+        
+        public GetPeopleHandler(IDbContextFactory<StargateContext> contextFactory)
         {
-            _context = context;
+            _contextFactory = contextFactory;
         }
-        public async Task<GetPeopleResult> Handle(GetPeople request, CancellationToken cancellationToken)
+        
+        public async Task<Result<GetPeopleResult, Exception>> Handle(GetPeople request, CancellationToken cancellationToken)
         {
-            var result = new GetPeopleResult();
+            try
+            {
+                await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+                
+                var query = $"SELECT a.Id as PersonId, a.Name, b.CurrentRank, b.CurrentDutyTitle, b.CareerStartDate, b.CareerEndDate FROM [Person] a LEFT JOIN [AstronautDetail] b on b.PersonId = a.Id";
 
-            var query = $"SELECT a.Id as PersonId, a.Name, b.CurrentRank, b.CurrentDutyTitle, b.CareerStartDate, b.CareerEndDate FROM [Person] a LEFT JOIN [AstronautDetail] b on b.PersonId = a.Id";
+                var people = await context.Connection.QueryAsync<PersonAstronaut>(query);
 
-            var people = await _context.Connection.QueryAsync<PersonAstronaut>(query);
+                var result = new GetPeopleResult
+                {
+                    People = people.ToList()
+                };
 
-            result.People = people.ToList();
-
-            return result;
+                return Result<GetPeopleResult, Exception>.Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return Result<GetPeopleResult, Exception>.Err(ex);
+            }
         }
     }
 
-    public class GetPeopleResult : BaseResponse
+    public sealed class GetPeopleResult
     {
         public List<PersonAstronaut> People { get; set; } = new List<PersonAstronaut> { };
-
     }
 }

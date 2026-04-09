@@ -1,62 +1,75 @@
-﻿using MediatR;
+using MediatR;
 using MediatR.Pipeline;
 using Microsoft.EntityFrameworkCore;
 using StargateAPI.Business.Data;
+using StargateAPI.Business.Values;
 using StargateAPI.Controllers;
 
 namespace StargateAPI.Business.Commands
 {
-    public class CreatePerson : IRequest<CreatePersonResult>
+    public sealed class CreatePerson : IRequest<Result<CreatePersonResult, Exception>>
     {
         public required string Name { get; set; } = string.Empty;
     }
 
-    public class CreatePersonPreProcessor : IRequestPreProcessor<CreatePerson>
+    public sealed class CreatePersonPreProcessor : IRequestPreProcessor<CreatePerson>
     {
-        private readonly StargateContext _context;
-        public CreatePersonPreProcessor(StargateContext context)
+        private readonly IDbContextFactory<StargateContext> _contextFactory;
+        
+        public CreatePersonPreProcessor(IDbContextFactory<StargateContext> contextFactory)
         {
-            _context = context;
+            _contextFactory = contextFactory;
         }
-        public Task Process(CreatePerson request, CancellationToken cancellationToken)
+        
+        public async Task Process(CreatePerson request, CancellationToken cancellationToken)
         {
-            var person = _context.People.AsNoTracking().FirstOrDefault(z => z.Name == request.Name);
+            await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+            
+            var person = context.People.AsNoTracking().FirstOrDefault(z => z.Name == request.Name);
 
             if (person is not null) throw new BadHttpRequestException("Bad Request");
-
-            return Task.CompletedTask;
         }
     }
 
-    public class CreatePersonHandler : IRequestHandler<CreatePerson, CreatePersonResult>
+    public sealed class CreatePersonHandler : IRequestHandler<CreatePerson, Result<CreatePersonResult, Exception>>
     {
-        private readonly StargateContext _context;
+        private readonly IDbContextFactory<StargateContext> _contextFactory;
 
-        public CreatePersonHandler(StargateContext context)
+        public CreatePersonHandler(IDbContextFactory<StargateContext> contextFactory)
         {
-            _context = context;
+            _contextFactory = contextFactory;
         }
-        public async Task<CreatePersonResult> Handle(CreatePerson request, CancellationToken cancellationToken)
+        
+        public async Task<Result<CreatePersonResult, Exception>> Handle(CreatePerson request, CancellationToken cancellationToken)
         {
-
+            try
+            {
+                await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+                
                 var newPerson = new Person()
                 {
                    Name = request.Name
                 };
 
-                await _context.People.AddAsync(newPerson);
+                await context.People.AddAsync(newPerson, cancellationToken);
 
-                await _context.SaveChangesAsync();
+                await context.SaveChangesAsync(cancellationToken);
 
-                return new CreatePersonResult()
+                var result = new CreatePersonResult()
                 {
                     Id = newPerson.Id
                 };
-          
+
+                return Result<CreatePersonResult, Exception>.Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return Result<CreatePersonResult, Exception>.Err(ex);
+            }
         }
     }
 
-    public class CreatePersonResult : BaseResponse
+    public sealed class CreatePersonResult
     {
         public int Id { get; set; }
     }
