@@ -17,7 +17,7 @@ namespace StargateAPI.Business.Data
 
     }
 
-    public class PersonConfiguration : IEntityTypeConfiguration<Person>
+    public sealed class PersonConfiguration : IEntityTypeConfiguration<Person>
     {
         public void Configure(EntityTypeBuilder<Person> builder)
         {

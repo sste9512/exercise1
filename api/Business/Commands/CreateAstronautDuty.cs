@@ -20,18 +20,12 @@ namespace StargateAPI.Business.Commands
         public DateTime DutyStartDate { get; set; }
     }
 
-    public sealed class CreateAstronautDutyPreProcessor : IRequestPreProcessor<CreateAstronautDuty>
+    public sealed class CreateAstronautDutyPreProcessor(IDbContextFactory<StargateContext> contextFactory)
+        : IRequestPreProcessor<CreateAstronautDuty>
     {
-        private readonly IDbContextFactory<StargateContext> _contextFactory;
-
-        public CreateAstronautDutyPreProcessor(IDbContextFactory<StargateContext> contextFactory)
-        {
-            _contextFactory = contextFactory;
-        }
-
         public async Task Process(CreateAstronautDuty request, CancellationToken cancellationToken)
         {
-            await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+            await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
             
             var person = context.People.AsNoTracking().FirstOrDefault(z => z.Name == request.Name);
 
@@ -43,19 +37,14 @@ namespace StargateAPI.Business.Commands
         }
     }
 
-    public sealed class CreateAstronautDutyHandler : IRequestHandler<CreateAstronautDuty, Result<CreateAstronautDutyResult, Exception>>
+    public sealed class CreateAstronautDutyHandler(IDbContextFactory<StargateContext> contextFactory)
+        : IRequestHandler<CreateAstronautDuty, Result<CreateAstronautDutyResult, Exception>>
     {
-        private readonly IDbContextFactory<StargateContext> _contextFactory;
-
-        public CreateAstronautDutyHandler(IDbContextFactory<StargateContext> contextFactory)
-        {
-            _contextFactory = contextFactory;
-        }
         public async Task<Result<CreateAstronautDutyResult, Exception>> Handle(CreateAstronautDuty request, CancellationToken cancellationToken)
         {
             try
             {
-                await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+                await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
             
             var query = $"SELECT * FROM [Person] WHERE \'{request.Name}\' = Name";
 

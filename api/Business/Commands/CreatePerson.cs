@@ -12,18 +12,12 @@ namespace StargateAPI.Business.Commands
         public required string Name { get; set; } = string.Empty;
     }
 
-    public sealed class CreatePersonPreProcessor : IRequestPreProcessor<CreatePerson>
+    public sealed class CreatePersonPreProcessor(IDbContextFactory<StargateContext> contextFactory)
+        : IRequestPreProcessor<CreatePerson>
     {
-        private readonly IDbContextFactory<StargateContext> _contextFactory;
-        
-        public CreatePersonPreProcessor(IDbContextFactory<StargateContext> contextFactory)
-        {
-            _contextFactory = contextFactory;
-        }
-        
         public async Task Process(CreatePerson request, CancellationToken cancellationToken)
         {
-            await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+            await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
             
             var person = context.People.AsNoTracking().FirstOrDefault(z => z.Name == request.Name);
 
@@ -31,20 +25,14 @@ namespace StargateAPI.Business.Commands
         }
     }
 
-    public sealed class CreatePersonHandler : IRequestHandler<CreatePerson, Result<CreatePersonResult, Exception>>
+    public sealed class CreatePersonHandler(IDbContextFactory<StargateContext> contextFactory)
+        : IRequestHandler<CreatePerson, Result<CreatePersonResult, Exception>>
     {
-        private readonly IDbContextFactory<StargateContext> _contextFactory;
-
-        public CreatePersonHandler(IDbContextFactory<StargateContext> contextFactory)
-        {
-            _contextFactory = contextFactory;
-        }
-        
         public async Task<Result<CreatePersonResult, Exception>> Handle(CreatePerson request, CancellationToken cancellationToken)
         {
             try
             {
-                await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+                await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
                 
                 var newPerson = new Person()
                 {

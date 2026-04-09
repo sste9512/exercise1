@@ -13,20 +13,14 @@ namespace StargateAPI.Business.Queries
         public string Name { get; set; } = string.Empty;
     }
 
-    public sealed class GetAstronautDutiesByNameHandler : IRequestHandler<GetAstronautDutiesByName, Result<GetAstronautDutiesByNameResult, Exception>>
+    public sealed class GetAstronautDutiesByNameHandler(IDbContextFactory<StargateContext> contextFactory)
+        : IRequestHandler<GetAstronautDutiesByName, Result<GetAstronautDutiesByNameResult, Exception>>
     {
-        private readonly IDbContextFactory<StargateContext> _contextFactory;
-
-        public GetAstronautDutiesByNameHandler(IDbContextFactory<StargateContext> contextFactory)
-        {
-            _contextFactory = contextFactory;
-        }
-
         public async Task<Result<GetAstronautDutiesByNameResult, Exception>> Handle(GetAstronautDutiesByName request, CancellationToken cancellationToken)
         {
             try
             {
-                await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+                await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
                 
                 var query = $"SELECT a.Id as PersonId, a.Name, b.CurrentRank, b.CurrentDutyTitle, b.CareerStartDate, b.CareerEndDate FROM [Person] a LEFT JOIN [AstronautDetail] b on b.PersonId = a.Id WHERE \'{request.Name}\' = a.Name";
 

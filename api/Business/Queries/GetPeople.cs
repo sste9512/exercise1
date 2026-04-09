@@ -13,20 +13,14 @@ namespace StargateAPI.Business.Queries
 
     }
 
-    public sealed class GetPeopleHandler : IRequestHandler<GetPeople, Result<GetPeopleResult, Exception>>
+    public sealed class GetPeopleHandler(IDbContextFactory<StargateContext> contextFactory)
+        : IRequestHandler<GetPeople, Result<GetPeopleResult, Exception>>
     {
-        private readonly IDbContextFactory<StargateContext> _contextFactory;
-        
-        public GetPeopleHandler(IDbContextFactory<StargateContext> contextFactory)
-        {
-            _contextFactory = contextFactory;
-        }
-        
         public async Task<Result<GetPeopleResult, Exception>> Handle(GetPeople request, CancellationToken cancellationToken)
         {
             try
             {
-                await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+                await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
                 
                 var query = $"SELECT a.Id as PersonId, a.Name, b.CurrentRank, b.CurrentDutyTitle, b.CareerStartDate, b.CareerEndDate FROM [Person] a LEFT JOIN [AstronautDetail] b on b.PersonId = a.Id";
 

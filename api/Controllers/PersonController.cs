@@ -9,25 +9,19 @@ namespace StargateAPI.Controllers
    
     [ApiController]
     [Route("[controller]")]
-    public class PersonController : ControllerBase
+    public sealed class PersonController(IMediator mediator) : ControllerBase
     {
-        private readonly IMediator _mediator;
-        public PersonController(IMediator mediator)
-        {
-            _mediator = mediator;
-        }
-
         [HttpGet("")]
         public async Task<IActionResult> GetPeople()
         {
-            var result = await _mediator.Send(new GetPeople());
+            var result = await mediator.Send(new GetPeople());
             return result.ToActionResult();
         }
 
         [HttpGet("{name}")]
         public async Task<IActionResult> GetPersonByName(string name)
         {
-            var result = await _mediator.Send(new GetPersonByName()
+            var result = await mediator.Send(new GetPersonByName()
             {
                 Name = name
             });
@@ -37,7 +31,7 @@ namespace StargateAPI.Controllers
         [HttpPost("")]
         public async Task<IActionResult> CreatePerson([FromBody] string name)
         {
-            var result = await _mediator.Send(new CreatePerson()
+            var result = await mediator.Send(new CreatePerson()
             {
                 Name = name
             });
