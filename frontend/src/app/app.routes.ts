@@ -12,6 +12,11 @@ export const routes: Routes = [
     canActivate: [authGuard]
   },
   {
+    path: 'astronaut-duties',
+    loadComponent: () => import('./features/astronaut-duties/astronaut-duties.component').then(m => m.AstronautDutiesComponent),
+    canActivate: [authGuard]
+  },
+  {
     path: '',
     redirectTo: '/login',
     pathMatch: 'full'

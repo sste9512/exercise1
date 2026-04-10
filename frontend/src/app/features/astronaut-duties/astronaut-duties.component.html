@@ -1,0 +1,191 @@
+<div class="astronaut-duties-container">
+  <!-- Search Section -->
+  <div class="search-section">
+    <div class="search-header">
+      <div class="search-icon">🔍</div>
+      <h2>Astronaut Duty Lookup</h2>
+      <p>Search for an astronaut by name to view their duty history</p>
+    </div>
+    
+    <div class="search-form">
+      <div class="input-wrapper">
+        <input 
+          type="text" 
+          [ngModel]="searchName()"
+          (ngModelChange)="searchName.set($event)"
+          (keyup.enter)="search()"
+          placeholder="Enter astronaut name..."
+          [disabled]="isLoading()"
+          class="search-input"
+        />
+        <button 
+          (click)="search()" 
+          [disabled]="isLoading()"
+          class="search-btn"
+        >
+          @if (isLoading()) {
+            <span class="spinner"></span>
+            Searching...
+          } @else {
+            Search
+          }
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading Progress -->
+  @if (isLoading()) {
+    <div class="loading-section">
+      <div class="progress-container">
+        <div class="progress-header">
+          <span class="progress-icon">🚀</span>
+          <span>Retrieving astronaut data...</span>
+        </div>
+        <div class="progress-bar-wrapper">
+          <div class="progress-bar" [style.width.%]="loadingProgress()"></div>
+        </div>
+        <div class="progress-steps">
+          <div class="step" [class.active]="loadingProgress() >= 0" [class.completed]="loadingProgress() >= 25">
+            <div class="step-indicator"></div>
+            <span>Connecting</span>
+          </div>
+          <div class="step" [class.active]="loadingProgress() >= 25" [class.completed]="loadingProgress() >= 50">
+            <div class="step-indicator"></div>
+            <span>Authenticating</span>
+          </div>
+          <div class="step" [class.active]="loadingProgress() >= 50" [class.completed]="loadingProgress() >= 75">
+            <div class="step-indicator"></div>
+            <span>Fetching Records</span>
+          </div>
+          <div class="step" [class.active]="loadingProgress() >= 75" [class.completed]="loadingProgress() >= 100">
+            <div class="step-indicator"></div>
+            <span>Complete</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Error State -->
+  @if (isError()) {
+    <div class="error-section">
+      <div class="error-card">
+        <div class="error-icon">⚠️</div>
+        <h3>Search Failed</h3>
+        <p>{{ errorMessage() }}</p>
+        <button class="retry-btn" (click)="search()">Try Again</button>
+      </div>
+    </div>
+  }
+
+  <!-- Results Section -->
+  @if (isSuccess() && hasResults()) {
+    <div class="results-section">
+      <!-- Astronaut Profile Card -->
+      <div class="profile-card">
+        <div class="profile-header">
+          <div class="avatar">
+            <span class="avatar-icon">👨‍🚀</span>
+            @if (isRetired()) {
+              <span class="status-badge retired">Retired</span>
+            } @else {
+              <span class="status-badge active">Active</span>
+            }
+          </div>
+          <div class="profile-info">
+            <h2 class="astronaut-name">{{ person()?.name }}</h2>
+            <div class="profile-details">
+              <div class="detail-item">
+                <span class="detail-label">Current Rank</span>
+                <span class="detail-value rank">{{ person()?.currentRank || 'N/A' }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">Current Duty</span>
+                <span class="detail-value duty">{{ person()?.currentDutyTitle || 'N/A' }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="profile-stats">
+          <div class="stat-card">
+            <div class="stat-icon">📅</div>
+            <div class="stat-content">
+              <span class="stat-value">{{ formatDate(person()?.careerStartDate ?? null) }}</span>
+              <span class="stat-label">Career Start</span>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">⏱️</div>
+            <div class="stat-content">
+              <span class="stat-value">{{ careerDuration() || 'N/A' }}</span>
+              <span class="stat-label">Career Duration</span>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">📋</div>
+            <div class="stat-content">
+              <span class="stat-value">{{ totalDuties() }}</span>
+              <span class="stat-label">Total Assignments</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Duty Timeline -->
+      <div class="duties-section">
+        <div class="duties-header">
+          <h3>📜 Duty Assignment History</h3>
+          <button class="new-search-btn" (click)="reset()">New Search</button>
+        </div>
+
+        @if (duties().length === 0) {
+          <div class="no-duties">
+            <div class="no-duties-icon">📭</div>
+            <p>No duty assignments found for this astronaut.</p>
+          </div>
+        } @else {
+          <div class="timeline">
+            @for (duty of duties(); track duty.id; let i = $index) {
+              <div class="timeline-item" [class.current]="isCurrentDuty(duty)" [style.animation-delay]="(i * 0.1) + 's'">
+                <div class="timeline-marker">
+                  @if (isCurrentDuty(duty)) {
+                    <div class="marker-pulse"></div>
+                  }
+                  <div class="marker-dot"></div>
+                </div>
+                <div class="timeline-content">
+                  <div class="duty-card">
+                    <div class="duty-header">
+                      <span class="duty-rank">{{ duty.rank }}</span>
+                      @if (isCurrentDuty(duty)) {
+                        <span class="current-badge">Current</span>
+                      }
+                    </div>
+                    <h4 class="duty-title">{{ duty.dutyTitle }}</h4>
+                    <div class="duty-dates">
+                      <span class="date-range">
+                        {{ formatDate(duty.dutyStartDate) }} — {{ formatDate(duty.dutyEndDate) }}
+                      </span>
+                      <span class="duration">{{ getDutyDuration(duty) }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            }
+          </div>
+        }
+      </div>
+    </div>
+  }
+
+  <!-- Empty State -->
+  @if (isIdle()) {
+    <div class="empty-state">
+      <div class="empty-illustration">🌌</div>
+      <h3>Ready to Explore</h3>
+      <p>Enter an astronaut's name above to view their duty history and career information.</p>
+    </div>
+  }
+</div>

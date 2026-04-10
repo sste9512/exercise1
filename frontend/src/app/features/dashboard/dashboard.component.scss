@@ -126,6 +126,19 @@
     box-shadow: 0 10px 30px rgba(102, 126, 234, 0.2);
   }
 
+  &.clickable {
+    position: relative;
+    
+    &:hover {
+      background: linear-gradient(135deg, #f0f4ff 0%, #e8f0fe 100%);
+      
+      .card-action {
+        opacity: 1;
+        transform: translateX(4px);
+      }
+    }
+  }
+
   .feature-icon {
     font-size: 48px;
     margin-bottom: 16px;
@@ -141,6 +154,16 @@
     font-size: 14px;
     color: #718096;
     line-height: 1.6;
+  }
+
+  .card-action {
+    display: block;
+    margin-top: 12px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #667eea;
+    opacity: 0.7;
+    transition: all 0.3s ease;
   }
 }
 

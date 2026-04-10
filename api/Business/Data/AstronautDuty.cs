@@ -56,6 +56,13 @@ namespace StargateAPI.Business.Data
             // Composite index to prevent duplicate assignments
             builder.HasIndex(x => new { x.PersonId, x.DutyTitle, x.DutyStartDate })
                 .IsUnique();
+
+            // Rule: A Person's Current Duty will not have a Duty End Date.
+            // Enforce at most one open (current) duty per person at the database level.
+            builder.HasIndex(x => x.PersonId)
+                .HasFilter("[DutyEndDate] IS NULL")
+                .IsUnique()
+                .HasDatabaseName("IX_AstronautDuty_SingleCurrentDutyPerPerson");
         }
     }
 }

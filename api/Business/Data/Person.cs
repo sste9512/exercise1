@@ -33,7 +33,8 @@ namespace StargateAPI.Business.Data
                 .IsRequired()
                 .HasMaxLength(200);
             
-            builder.HasIndex(x => x.Name);
+            builder.HasIndex(x => x.Name)
+                .IsUnique();
             
             // One-to-one: Person has one AstronautDetail (current astronaut information)
             builder.HasOne(z => z.AstronautDetail)

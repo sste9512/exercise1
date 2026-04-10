@@ -20,9 +20,9 @@ namespace StargateAPI.Business.Commands
         {
             await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
 
-            var person = context.People.AsNoTracking().FirstOrDefault(z => z.Name == request.Name);
+            var person = await context.People.AsNoTracking().FirstOrDefaultAsync(z => z.Name == request.Name, cancellationToken);
 
-            if (person is not null) throw new BadHttpRequestException("Bad Request");
+            if (person is not null) throw new BadHttpRequestException("Person already exists");
         }
     }
 
