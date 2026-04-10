@@ -9,13 +9,15 @@ namespace StargateAPI.Controllers
     [ApiController]
     [Authorize]
     [Route("[controller]")]
-    public sealed class AuthController(IMediator mediator) : ControllerBase
+    public sealed class AuthController(IMediator mediator, ILogger<AuthController> logger) : ControllerBase
     {
         [HttpPost("login")]
         [AllowAnonymous]
         public async Task<IActionResult> Login([FromBody] LoginUser request)
         {
+            logger.LogInformation("Login endpoint hit for user: {Username}", request.Username);
             var result = await mediator.Send(request);
+            logger.LogInformation("Login completed for user: {Username}", request.Username);
             return result.ToActionResult();
         }
 
@@ -23,7 +25,9 @@ namespace StargateAPI.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> SignUp([FromBody] SignUpUser request)
         {
+            logger.LogInformation("SignUp endpoint hit for user: {Username}", request.Username);
             var result = await mediator.Send(request);
+            logger.LogInformation("SignUp completed for user: {Username}", request.Username);
             return result.ToActionResult();
         }
 

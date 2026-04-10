@@ -6,16 +6,16 @@ using Microsoft.Extensions.Logging;
 
 namespace StargateAPI.Business.Commands
 {
-    public sealed class LoginUser : IRequest<Result<LoginUserResult, Exception>>
+    public sealed class LoginUser : IRequest<Result<LoginUserResult, IdentityOperationError>>
     {
         public required string Username { get; set; } = string.Empty;
         public required string Password { get; set; } = string.Empty;
     }
 
-    public sealed partial class LoginUserHandler(UserManager<User> userManager, SignInManager<User> signInManager, ILogger<LoginUserHandler> logger)
-        : IRequestHandler<LoginUser, Result<LoginUserResult, Exception>>
+    public sealed partial class LoginUserHandler(UserManager<User> userManager, ILogger<LoginUserHandler> logger)
+        : IRequestHandler<LoginUser, Result<LoginUserResult, IdentityOperationError>>
     {
-        public async Task<Result<LoginUserResult, Exception>> Handle(LoginUser request, CancellationToken cancellationToken)
+        public async Task<Result<LoginUserResult, IdentityOperationError>> Handle(LoginUser request, CancellationToken cancellationToken)
         {
             LogExecutingLogin(logger, request.Username);
             try
@@ -23,19 +23,19 @@ namespace StargateAPI.Business.Commands
                 var user = await userManager.FindByNameAsync(request.Username);
                 if (user == null)
                 {
-                    throw new BadHttpRequestException("Invalid username or password", StatusCodes.Status401Unauthorized);
+                    return Result<LoginUserResult, IdentityOperationError>.Err(new IdentityOperationError(StatusCodes.Status401Unauthorized, "Invalid username or password"));
                 }
 
-                var result = await signInManager.PasswordSignInAsync(user, request.Password, isPersistent: false, lockoutOnFailure: false);
-                if (!result.Succeeded)
+                var isValidPassword = await userManager.CheckPasswordAsync(user, request.Password);
+                if (!isValidPassword)
                 {
-                    throw new BadHttpRequestException("Invalid username or password", StatusCodes.Status401Unauthorized);
+                    return Result<LoginUserResult, IdentityOperationError>.Err(new IdentityOperationError(StatusCodes.Status401Unauthorized, "Invalid username or password"));
                 }
 
                 var roles = await userManager.GetRolesAsync(user);
 
                 LogLoginSuccess(logger, request.Username);
-                return Result<LoginUserResult, Exception>.Ok(new LoginUserResult
+                return Result<LoginUserResult, IdentityOperationError>.Ok(new LoginUserResult
                 {
                     Username = user.UserName!,
                     Roles = roles.ToList()
@@ -44,7 +44,7 @@ namespace StargateAPI.Business.Commands
             catch (Exception ex)
             {
                 LogLoginError(logger, request.Username, ex);
-                return Result<LoginUserResult, Exception>.Err(ex);
+                return Result<LoginUserResult, IdentityOperationError>.Err(new IdentityOperationError(StatusCodes.Status500InternalServerError, ex.Message));
             }
         }
 

@@ -1,0 +1,54 @@
+<div class="dashboard-container">
+  <div class="dashboard-card">
+    <div class="header">
+      <div class="welcome-section">
+        <h1>🚀 Welcome to Stargate API</h1>
+        @if (authService.currentUser(); as user) {
+          <p class="user-info">
+            Logged in as <strong>{{ user.username }}</strong>
+            @if (user.roles.length > 0) {
+              <span class="role-badge">{{ user.roles[0] }}</span>
+            }
+          </p>
+        }
+      </div>
+      <button class="logout-btn" (click)="logout()">
+        Logout
+      </button>
+    </div>
+
+    <div class="content">
+      <div class="info-card">
+        <div class="icon">✅</div>
+        <h2>Authentication Successful</h2>
+        <p>You have successfully logged into the Stargate API system.</p>
+      </div>
+
+      <div class="features-grid">
+        <div class="feature-card">
+          <div class="feature-icon">👥</div>
+          <h3>People Management</h3>
+          <p>Manage astronaut personnel records</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">📋</div>
+          <h3>Duty Assignments</h3>
+          <p>Track astronaut duty assignments</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">📊</div>
+          <h3>Reports</h3>
+          <p>View detailed astronaut reports</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">⚙️</div>
+          <h3>Settings</h3>
+          <p>Configure system preferences</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

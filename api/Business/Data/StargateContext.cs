@@ -6,9 +6,16 @@ using System.Data;
 
 namespace StargateAPI.Business.Data
 {
-    public sealed class StargateContext(DbContextOptions<StargateContext> options, IUserContext? userContext = null)
+    public sealed class StargateContext(DbContextOptions<StargateContext> options)
         : IdentityDbContext<User, IdentityRole<int>, int>(options)
     {
+        private IUserContext? _userContext;
+
+        public void SetUserContext(IUserContext userContext)
+        {
+            _userContext = userContext;
+        }
+
         public IDbConnection Connection => Database.GetDbConnection();
         public DbSet<Person> People => Set<Person>();
         public DbSet<AstronautDetail> AstronautDetails => Set<AstronautDetail>();
@@ -33,52 +40,56 @@ namespace StargateAPI.Business.Data
 
         public override int SaveChanges()
         {
-            UpdateAuditFields();
             return base.SaveChanges();
         }
 
         public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
         {
-            UpdateAuditFields();
             return await base.SaveChangesAsync(cancellationToken);
         }
 
-        private void UpdateAuditFields()
+        public void UpdateAuditFields()
         {
-            var auditableEntries = ChangeTracker.Entries<AuditableEntity>();
+            var currentUser = _userContext?.CurrentUser ?? "System";
+            var timestamp = DateTime.UtcNow;
 
-            foreach (var entry in auditableEntries)
+            var entries = ChangeTracker.Entries()
+                .Where(e => e.State is EntityState.Added or EntityState.Modified);
+
+            foreach (var entry in entries)
             {
-                var currentUser = userContext?.CurrentUser ?? "System";
-                switch (entry.State)
+                if (entry.Entity is ApplicationLog or AuditLog)
                 {
-                    case EntityState.Added:
-                        entry.Entity.CreatedAt = DateTime.UtcNow;
-                        entry.Entity.CreatedBy = currentUser;
-                        entry.Entity.IsDeleted = false;
-                        break;
-                    case EntityState.Modified:
-                        entry.Entity.UpdatedAt = DateTime.UtcNow;
-                        entry.Entity.UpdatedBy = currentUser;
-                        break;
+                    continue;
                 }
-            }
-
-            var userEntries = ChangeTracker.Entries<User>();
-            foreach (var entry in userEntries)
-            {
-                var currentUser = userContext?.CurrentUser ?? "System";
-                switch (entry.State)
+                
+                if (entry.Entity is AuditableEntity auditable)
                 {
-                    case EntityState.Added:
-                        entry.Entity.CreatedAt = DateTime.UtcNow;
-                        entry.Entity.CreatedBy = currentUser;
-                        entry.Entity.IsDeleted = false;
-                        break;
-                    case EntityState.Modified:
-                        entry.Entity.UpdatedAt = DateTime.UtcNow;
-                        entry.Entity.UpdatedBy = currentUser;
-                        break;
+                    if (entry.State == EntityState.Added)
+                    {
+                        auditable.CreatedAt = timestamp;
+                        auditable.CreatedBy = currentUser;
+                        auditable.IsDeleted = false;
+                    }
+                    else
+                    {
+                        auditable.UpdatedAt = timestamp;
+                        auditable.UpdatedBy = currentUser;
+                    }
+                }
+                else if (entry.Entity is User user)
+                {
+                    if (entry.State == EntityState.Added)
+                    {
+                        user.CreatedAt = timestamp;
+                        user.CreatedBy = currentUser;
+                        user.IsDeleted = false;
+                    }
+                    else
+                    {
+                        user.UpdatedAt = timestamp;
+                        user.UpdatedBy = currentUser;
+                    }
                 }
             }
         }
@@ -87,7 +98,7 @@ namespace StargateAPI.Business.Data
         {
             entity.IsDeleted = true;
             entity.DeletedAt = DateTime.UtcNow;
-            entity.DeletedBy = userContext?.CurrentUser ?? "System";
+            entity.DeletedBy = _userContext?.CurrentUser ?? "System";
             Entry(entity).State = EntityState.Modified;
         }
 
@@ -95,7 +106,7 @@ namespace StargateAPI.Business.Data
         {
             user.IsDeleted = true;
             user.DeletedAt = DateTime.UtcNow;
-            user.DeletedBy = userContext?.CurrentUser ?? "System";
+            user.DeletedBy = _userContext?.CurrentUser ?? "System";
             Entry(user).State = EntityState.Modified;
         }
 

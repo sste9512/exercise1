@@ -22,11 +22,28 @@ namespace StargateAPI.Business.Pipeline
                     TimeSpan.FromSeconds(Math.Pow(2, i)) + TimeSpan.FromMilliseconds(_random.Next(0, 1000)));
         }
 
+        private static readonly HashSet<string> _noRetryCommands = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "LoginUser",
+            "SignUpUser",
+            "LogoutUser"
+        };
+
         public async Task<TResponse> Handle(TRequest request, RequestHandlerDelegate<TResponse> next, CancellationToken cancellationToken)
         {
             var requestName = typeof(TRequest).Name;
             LogExecutingRequest(_logger, requestName);
             
+            // Skip retry for auth commands - they should not retry on failure
+            if (_noRetryCommands.Contains(requestName))
+            {
+                _logger.LogInformation("Skipping retry for {RequestName}, calling handler directly", requestName);
+                var result = await next();
+                _logger.LogInformation("Handler completed for {RequestName}", requestName);
+                LogRequestCompleted(_logger, requestName);
+                return result;
+            }
+
             try
             {
                 var result = await _retryPolicy.ExecuteAsync(async () => await next());

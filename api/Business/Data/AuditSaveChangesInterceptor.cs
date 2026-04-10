@@ -1,11 +1,12 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using StargateAPI.Business.Pipeline;
 using System.Text.Json;
 
 namespace StargateAPI.Business.Data
 {
-    public sealed class AuditSaveChangesInterceptor : SaveChangesInterceptor
+    public sealed class AuditSaveChangesInterceptor(IHttpContextAccessor httpContextAccessor) : SaveChangesInterceptor
     {
         public override ValueTask<InterceptionResult<int>> SavingChangesAsync(
             DbContextEventData eventData,
@@ -14,6 +15,14 @@ namespace StargateAPI.Business.Data
         {
             if (eventData.Context is null)
                 return base.SavingChangesAsync(eventData, result, cancellationToken);
+
+            var userContext = httpContextAccessor.HttpContext?.RequestServices.GetRequiredService<IUserContext>();
+
+            if (eventData.Context is StargateContext stargateContext && userContext != null)
+            {
+                stargateContext.SetUserContext(userContext);
+                stargateContext.UpdateAuditFields();
+            }
 
             var auditEntries = OnBeforeSaveChanges(eventData.Context);
             
@@ -32,6 +41,14 @@ namespace StargateAPI.Business.Data
             if (eventData.Context is null)
                 return base.SavingChanges(eventData, result);
 
+            var userContext = httpContextAccessor.HttpContext?.RequestServices.GetRequiredService<IUserContext>();
+
+            if (eventData.Context is StargateContext stargateContext && userContext != null)
+            {
+                stargateContext.SetUserContext(userContext);
+                stargateContext.UpdateAuditFields();
+            }
+
             var auditEntries = OnBeforeSaveChanges(eventData.Context);
             
             if (auditEntries.Count > 0)
@@ -49,7 +66,7 @@ namespace StargateAPI.Business.Data
 
             foreach (var entry in context.ChangeTracker.Entries())
             {
-                if (entry.Entity is AuditLog || entry.State == EntityState.Detached || entry.State == EntityState.Unchanged)
+                if (entry.Entity is AuditLog || entry.Entity is ApplicationLog || entry.State == EntityState.Detached || entry.State == EntityState.Unchanged)
                     continue;
 
                 var auditEntry = CreateAuditEntry(entry);

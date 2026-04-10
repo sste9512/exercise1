@@ -32,6 +32,16 @@ namespace StargateAPI.Controllers
                 });
         }
 
+        public static IActionResult ToActionResult<TValue>(this Result<TValue, IdentityOperationError> result)
+        {
+            return result.Match<IActionResult>(
+                ok => new OkObjectResult(ok),
+                err => new ObjectResult(new { message = err.Message, errors = err.Errors })
+                {
+                    StatusCode = err.StatusCode
+                });
+        }
+
         public static IActionResult ToActionResult<TValue>(this Result<TValue, Exception> result)
         {
             return result.Match<IActionResult>(

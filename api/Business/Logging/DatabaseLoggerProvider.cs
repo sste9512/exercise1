@@ -27,8 +27,7 @@ namespace StargateAPI.Business.Logging
 
         public ILogger CreateLogger(string categoryName)
         {
-            var userContext = _serviceProvider.GetService<IUserContext>();
-            return new DatabaseLogger(categoryName, _contextFactory, userContext, _logQueue);
+            return new DatabaseLogger(categoryName, _contextFactory, _serviceProvider, _logQueue);
         }
 
         private async Task ProcessLogQueue(CancellationToken cancellationToken)
@@ -74,7 +73,13 @@ namespace StargateAPI.Business.Logging
         {
             try
             {
+                // Give the main application a small chance to finish its transactions
+                await Task.Delay(500, cancellationToken);
                 await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+                
+                // Disable change tracking for faster inserts and to avoid any interceptor overhead if possible
+                context.ChangeTracker.QueryTrackingBehavior = QueryTrackingBehavior.NoTracking;
+                
                 await context.ApplicationLogs.AddRangeAsync(logs, cancellationToken);
                 await context.SaveChangesAsync(cancellationToken);
             }

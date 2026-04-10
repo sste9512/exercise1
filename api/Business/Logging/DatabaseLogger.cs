@@ -9,18 +9,18 @@ namespace StargateAPI.Business.Logging
     {
         private readonly string _categoryName;
         private readonly IDbContextFactory<StargateContext> _contextFactory;
-        private readonly IUserContext? _userContext;
+        private readonly IServiceProvider _serviceProvider;
         private readonly BlockingCollection<ApplicationLog> _logQueue;
 
         public DatabaseLogger(
             string categoryName,
             IDbContextFactory<StargateContext> contextFactory,
-            IUserContext? userContext,
+            IServiceProvider serviceProvider,
             BlockingCollection<ApplicationLog> logQueue)
         {
             _categoryName = categoryName;
             _contextFactory = contextFactory;
-            _userContext = userContext;
+            _serviceProvider = serviceProvider;
             _logQueue = logQueue;
         }
 
@@ -38,6 +38,18 @@ namespace StargateAPI.Business.Logging
             if (!IsEnabled(logLevel))
                 return;
 
+            // Try to get current user from scoped service provider
+            string? username = null;
+            try
+            {
+                var userContext = _serviceProvider.GetService<IUserContext>();
+                username = userContext?.CurrentUser;
+            }
+            catch
+            {
+                // If we can't resolve IUserContext (e.g., outside of a request scope), username remains null
+            }
+
             var log = new ApplicationLog
             {
                 Timestamp = DateTime.UtcNow,
@@ -47,7 +59,7 @@ namespace StargateAPI.Business.Logging
                 Exception = exception?.ToString(),
                 EventId = eventId.Id != 0 ? eventId.ToString() : null,
                 State = state?.ToString(),
-                Username = _userContext?.CurrentUser
+                Username = username
             };
 
             _logQueue.Add(log);

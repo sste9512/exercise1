@@ -15,6 +15,17 @@ builder.Logging.AddConsole();
 builder.Logging.AddDebug();
 builder.Logging.AddDatabaseLogger();
 
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(policy =>
+    {
+        policy.WithOrigins("http://localhost:4200")
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials();
+    });
+});
+
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddOpenApi();
@@ -26,15 +37,21 @@ builder.Services.AddAuthentication("BasicAuthentication")
 
 builder.Services.AddSingleton<AuditSaveChangesInterceptor>();
 
-builder.Services.AddDbContext<StargateContext>((serviceProvider, options) => 
-    options.UseSqlite(builder.Configuration.GetConnectionString("StarbaseApiDatabase"))
+builder.Services.AddDbContextPool<StargateContext>((serviceProvider, options) => 
+    options.UseSqlite(builder.Configuration.GetConnectionString("StarbaseApiDatabase"), sqliteOptions =>
+    {
+        sqliteOptions.CommandTimeout(30);
+    })
            .AddInterceptors(serviceProvider.GetRequiredService<AuditSaveChangesInterceptor>())
            .ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning)));
 
-builder.Services.AddDbContextFactory<StargateContext>((serviceProvider, options) => 
-    options.UseSqlite(builder.Configuration.GetConnectionString("StarbaseApiDatabase"))
+builder.Services.AddPooledDbContextFactory<StargateContext>((serviceProvider, options) => 
+    options.UseSqlite(builder.Configuration.GetConnectionString("StarbaseApiDatabase"), sqliteOptions =>
+    {
+        sqliteOptions.CommandTimeout(30);
+    })
            .AddInterceptors(serviceProvider.GetRequiredService<AuditSaveChangesInterceptor>())
-           .ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning)), ServiceLifetime.Scoped);
+           .ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning)));
 
 builder.Services.AddIdentity<User, IdentityRole<int>>(options =>
 {
@@ -75,6 +92,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+app.UseCors();
 
 app.UseAuthentication();
 app.UseAuthorization();
