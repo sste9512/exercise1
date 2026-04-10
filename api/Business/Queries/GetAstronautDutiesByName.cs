@@ -5,6 +5,7 @@ using StargateAPI.Business.Data;
 using StargateAPI.Business.Dtos;
 using StargateAPI.Business.Values;
 using StargateAPI.Controllers;
+using Microsoft.Extensions.Logging;
 
 namespace StargateAPI.Business.Queries
 {
@@ -13,11 +14,12 @@ namespace StargateAPI.Business.Queries
         public string Name { get; set; } = string.Empty;
     }
 
-    public sealed class GetAstronautDutiesByNameHandler(IDbContextFactory<StargateContext> contextFactory)
+    public sealed partial class GetAstronautDutiesByNameHandler(IDbContextFactory<StargateContext> contextFactory, ILogger<GetAstronautDutiesByNameHandler> logger)
         : IRequestHandler<GetAstronautDutiesByName, Result<GetAstronautDutiesByNameResult, Exception>>
     {
         public async Task<Result<GetAstronautDutiesByNameResult, Exception>> Handle(GetAstronautDutiesByName request, CancellationToken cancellationToken)
         {
+            LogExecutingGetAstronautDutiesByName(logger, request.Name);
             try
             {
                 await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
@@ -36,13 +38,24 @@ namespace StargateAPI.Business.Queries
                     AstronautDuties = duties.ToList()
                 };
 
+                LogGetAstronautDutiesByNameSuccess(logger, request.Name, result.AstronautDuties.Count);
                 return Result<GetAstronautDutiesByNameResult, Exception>.Ok(result);
             }
             catch (Exception ex)
             {
+                LogGetAstronautDutiesByNameError(logger, request.Name, ex);
                 return Result<GetAstronautDutiesByNameResult, Exception>.Err(ex);
             }
         }
+
+        [LoggerMessage(LogLevel.Information, "Executing GetAstronautDutiesByName query for name: {Name}")]
+        private static partial void LogExecutingGetAstronautDutiesByName(ILogger logger, string name);
+
+        [LoggerMessage(LogLevel.Information, "GetAstronautDutiesByName query completed for name: {Name}. Retrieved {Count} duties")]
+        private static partial void LogGetAstronautDutiesByNameSuccess(ILogger logger, string name, int count);
+
+        [LoggerMessage(LogLevel.Error, "Error executing GetAstronautDutiesByName query for name: {Name}")]
+        private static partial void LogGetAstronautDutiesByNameError(ILogger logger, string name, Exception exception);
     }
 
     public sealed class GetAstronautDutiesByNameResult

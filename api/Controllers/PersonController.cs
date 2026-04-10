@@ -1,4 +1,4 @@
-﻿using MediatR;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using StargateAPI.Business.Commands;
@@ -34,6 +34,16 @@ namespace StargateAPI.Controllers
         public async Task<IActionResult> CreatePerson([FromBody] string name)
         {
             var result = await mediator.Send(new CreatePerson()
+            {
+                Name = name
+            });
+            return result.ToActionResult();
+        }
+
+        [HttpPut("{name}")]
+        public async Task<IActionResult> UpdatePerson(string name)
+        {
+            var result = await mediator.Send(new UpdatePerson()
             {
                 Name = name
             });

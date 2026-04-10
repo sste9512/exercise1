@@ -1,8 +1,9 @@
-﻿using MediatR;
+using MediatR;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using StargateAPI.Business.Data;
 using StargateAPI.Business.Values;
+using Microsoft.Extensions.Logging;
 
 namespace StargateAPI.Business.Commands
 {
@@ -14,11 +15,12 @@ namespace StargateAPI.Business.Commands
         public string? Role { get; set; }
     }
 
-    public sealed class UpdateUserHandler(UserManager<User> userManager, RoleManager<IdentityRole<int>> roleManager)
+    public sealed partial class UpdateUserHandler(UserManager<User> userManager, RoleManager<IdentityRole<int>> roleManager, ILogger<UpdateUserHandler> logger)
         : IRequestHandler<UpdateUser, Result<UpdateUserResult, Exception>>
     {
         public async Task<Result<UpdateUserResult, Exception>> Handle(UpdateUser request, CancellationToken cancellationToken)
         {
+            LogExecutingUpdateUser(logger, request.Id);
             try
             {
                 var user = await userManager.FindByIdAsync(request.Id.ToString());
@@ -61,13 +63,24 @@ namespace StargateAPI.Business.Commands
 
                 await userManager.UpdateAsync(user);
 
+                LogUpdateUserSuccess(logger, request.Id, user.UserName ?? "unknown");
                 return Result<UpdateUserResult, Exception>.Ok(new UpdateUserResult { Id = user.Id });
             }
             catch (Exception ex)
             {
+                LogUpdateUserError(logger, request.Id, ex);
                 return Result<UpdateUserResult, Exception>.Err(ex);
             }
         }
+
+        [LoggerMessage(LogLevel.Information, "Executing UpdateUser command for user ID: {UserId}")]
+        private static partial void LogExecutingUpdateUser(ILogger logger, int userId);
+
+        [LoggerMessage(LogLevel.Information, "UpdateUser command completed successfully for user ID: {UserId}, username: {Username}")]
+        private static partial void LogUpdateUserSuccess(ILogger logger, int userId, string username);
+
+        [LoggerMessage(LogLevel.Error, "Error executing UpdateUser command for user ID: {UserId}")]
+        private static partial void LogUpdateUserError(ILogger logger, int userId, Exception exception);
     }
 
     public sealed class UpdateUserResult

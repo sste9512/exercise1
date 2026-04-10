@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using StargateAPI.Business.Data;
 using StargateAPI.Business.Values;
 using StargateAPI.Controllers;
+using Microsoft.Extensions.Logging;
 
 namespace StargateAPI.Business.Commands
 {
@@ -25,12 +26,13 @@ namespace StargateAPI.Business.Commands
         }
     }
 
-    public sealed class CreatePersonHandler(IDbContextFactory<StargateContext> contextFactory)
+    public sealed partial class CreatePersonHandler(IDbContextFactory<StargateContext> contextFactory, ILogger<CreatePersonHandler> logger)
         : IRequestHandler<CreatePerson, Result<CreatePersonResult, Exception>>
     {
         public async Task<Result<CreatePersonResult, Exception>> Handle(CreatePerson request,
             CancellationToken cancellationToken)
         {
+            LogExecutingCreatePerson(logger, request.Name);
             try
             {
                 await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
@@ -51,13 +53,24 @@ namespace StargateAPI.Business.Commands
                     Id = newPerson.Id
                 };
 
+                LogCreatePersonSuccess(logger, request.Name, result.Id);
                 return Result<CreatePersonResult, Exception>.Ok(result);
             }
             catch (Exception ex)
             {
+                LogCreatePersonError(logger, request.Name, ex);
                 return Result<CreatePersonResult, Exception>.Err(ex);
             }
         }
+
+        [LoggerMessage(LogLevel.Information, "Executing CreatePerson command for name: {Name}")]
+        private static partial void LogExecutingCreatePerson(ILogger logger, string name);
+
+        [LoggerMessage(LogLevel.Information, "CreatePerson command completed successfully for name: {Name}. Created person with ID: {Id}")]
+        private static partial void LogCreatePersonSuccess(ILogger logger, string name, int id);
+
+        [LoggerMessage(LogLevel.Error, "Error executing CreatePerson command for name: {Name}")]
+        private static partial void LogCreatePersonError(ILogger logger, string name, Exception exception);
     }
 
     public sealed class CreatePersonResult

@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using StargateAPI.Business.Pipeline;
@@ -14,6 +14,7 @@ namespace StargateAPI.Business.Data
         public DbSet<AstronautDetail> AstronautDetails => Set<AstronautDetail>();
         public DbSet<AstronautDuty> AstronautDuties => Set<AstronautDuty>();
         public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+        public DbSet<ApplicationLog> ApplicationLogs => Set<ApplicationLog>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

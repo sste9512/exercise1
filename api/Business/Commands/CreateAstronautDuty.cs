@@ -6,6 +6,7 @@ using StargateAPI.Business.Data;
 using StargateAPI.Business.Values;
 using StargateAPI.Controllers;
 using System.Net;
+using Microsoft.Extensions.Logging;
 
 namespace StargateAPI.Business.Commands
 {
@@ -38,12 +39,13 @@ namespace StargateAPI.Business.Commands
         }
     }
 
-    public sealed class CreateAstronautDutyHandler(IDbContextFactory<StargateContext> contextFactory)
+    public sealed partial class CreateAstronautDutyHandler(IDbContextFactory<StargateContext> contextFactory, ILogger<CreateAstronautDutyHandler> logger)
         : IRequestHandler<CreateAstronautDuty, Result<CreateAstronautDutyResult, Exception>>
     {
         public async Task<Result<CreateAstronautDutyResult, Exception>> Handle(CreateAstronautDuty request,
             CancellationToken cancellationToken)
         {
+            LogExecutingCreateAstronautDuty(logger, request.Name, request.DutyTitle);
             try
             {
                 await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
@@ -112,13 +114,24 @@ namespace StargateAPI.Business.Commands
                     Id = newAstronautDuty.Id
                 };
 
+                LogCreateAstronautDutySuccess(logger, request.Name, request.DutyTitle, result.Id ?? 0);
                 return Result<CreateAstronautDutyResult, Exception>.Ok(result);
             }
             catch (Exception ex)
             {
+                LogCreateAstronautDutyError(logger, request.Name, request.DutyTitle, ex);
                 return Result<CreateAstronautDutyResult, Exception>.Err(ex);
             }
         }
+
+        [LoggerMessage(LogLevel.Information, "Executing CreateAstronautDuty command for name: {Name}, duty: {DutyTitle}")]
+        private static partial void LogExecutingCreateAstronautDuty(ILogger logger, string name, string dutyTitle);
+
+        [LoggerMessage(LogLevel.Information, "CreateAstronautDuty command completed successfully for name: {Name}, duty: {DutyTitle}. Created duty with ID: {Id}")]
+        private static partial void LogCreateAstronautDutySuccess(ILogger logger, string name, string dutyTitle, int id);
+
+        [LoggerMessage(LogLevel.Error, "Error executing CreateAstronautDuty command for name: {Name}, duty: {DutyTitle}")]
+        private static partial void LogCreateAstronautDutyError(ILogger logger, string name, string dutyTitle, Exception exception);
     }
 
     public sealed class CreateAstronautDutyResult

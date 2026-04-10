@@ -1,8 +1,9 @@
-﻿using MediatR;
+using MediatR;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using StargateAPI.Business.Data;
 using StargateAPI.Business.Values;
+using Microsoft.Extensions.Logging;
 
 namespace StargateAPI.Business.Queries
 {
@@ -10,11 +11,13 @@ namespace StargateAPI.Business.Queries
     {
     }
 
-    public sealed class GetUsersHandler(UserManager<User> userManager)
+    public sealed partial class GetUsersHandler(UserManager<User> userManager, ILogger<GetUsersHandler> logger)
         : IRequestHandler<GetUsers, Result<GetUsersResult, Exception>>
     {
-        public async Task<Result<GetUsersResult, Exception>> Handle(GetUsers request, CancellationToken cancellationToken)
+        public async Task<Result<GetUsersResult, Exception>> Handle(GetUsers request,
+            CancellationToken cancellationToken)
         {
+            LogExecutingGetUsers(logger);
             try
             {
                 var users = await userManager.Users
@@ -35,13 +38,24 @@ namespace StargateAPI.Business.Queries
                     }
                 }
 
+                LogGetUsersSuccess(logger, users.Count);
                 return Result<GetUsersResult, Exception>.Ok(new GetUsersResult { Users = users });
             }
             catch (Exception ex)
             {
+                LogGetUsersError(logger, ex);
                 return Result<GetUsersResult, Exception>.Err(ex);
             }
         }
+
+        [LoggerMessage(LogLevel.Information, "Executing GetUsers query")]
+        private static partial void LogExecutingGetUsers(ILogger logger);
+
+        [LoggerMessage(LogLevel.Information, "GetUsers query completed successfully. Retrieved {Count} users")]
+        private static partial void LogGetUsersSuccess(ILogger logger, int count);
+
+        [LoggerMessage(LogLevel.Error, "Error executing GetUsers query")]
+        private static partial void LogGetUsersError(ILogger logger, Exception exception);
     }
 
     public sealed class GetUsersResult

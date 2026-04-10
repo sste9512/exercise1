@@ -1,7 +1,8 @@
-﻿using MediatR;
+using MediatR;
 using Microsoft.AspNetCore.Identity;
 using StargateAPI.Business.Data;
 using StargateAPI.Business.Values;
+using Microsoft.Extensions.Logging;
 
 namespace StargateAPI.Business.Commands
 {
@@ -11,11 +12,12 @@ namespace StargateAPI.Business.Commands
         public required string Password { get; set; } = string.Empty;
     }
 
-    public sealed class LoginUserHandler(UserManager<User> userManager, SignInManager<User> signInManager)
+    public sealed partial class LoginUserHandler(UserManager<User> userManager, SignInManager<User> signInManager, ILogger<LoginUserHandler> logger)
         : IRequestHandler<LoginUser, Result<LoginUserResult, Exception>>
     {
         public async Task<Result<LoginUserResult, Exception>> Handle(LoginUser request, CancellationToken cancellationToken)
         {
+            LogExecutingLogin(logger, request.Username);
             try
             {
                 var user = await userManager.FindByNameAsync(request.Username);
@@ -32,6 +34,7 @@ namespace StargateAPI.Business.Commands
 
                 var roles = await userManager.GetRolesAsync(user);
 
+                LogLoginSuccess(logger, request.Username);
                 return Result<LoginUserResult, Exception>.Ok(new LoginUserResult
                 {
                     Username = user.UserName!,
@@ -40,9 +43,19 @@ namespace StargateAPI.Business.Commands
             }
             catch (Exception ex)
             {
+                LogLoginError(logger, request.Username, ex);
                 return Result<LoginUserResult, Exception>.Err(ex);
             }
         }
+
+        [LoggerMessage(LogLevel.Information, "Executing Login command for username: {Username}")]
+        private static partial void LogExecutingLogin(ILogger logger, string username);
+
+        [LoggerMessage(LogLevel.Information, "Login command completed successfully for username: {Username}")]
+        private static partial void LogLoginSuccess(ILogger logger, string username);
+
+        [LoggerMessage(LogLevel.Warning, "Login failed for username: {Username}")]
+        private static partial void LogLoginError(ILogger logger, string username, Exception exception);
     }
 
     public sealed class LoginUserResult

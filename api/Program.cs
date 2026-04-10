@@ -6,8 +6,14 @@ using Scalar.AspNetCore;
 using StargateAPI.Business.Commands;
 using StargateAPI.Business.Data;
 using StargateAPI.Business.Pipeline;
+using StargateAPI.Business.Logging;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Logging.ClearProviders();
+builder.Logging.AddConsole();
+builder.Logging.AddDebug();
+builder.Logging.AddDatabaseLogger();
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();

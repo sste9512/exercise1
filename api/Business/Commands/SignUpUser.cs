@@ -2,6 +2,7 @@ using MediatR;
 using Microsoft.AspNetCore.Identity;
 using StargateAPI.Business.Data;
 using StargateAPI.Business.Values;
+using Microsoft.Extensions.Logging;
 
 namespace StargateAPI.Business.Commands
 {
@@ -12,11 +13,12 @@ namespace StargateAPI.Business.Commands
         public string? Email { get; set; }
     }
 
-    public sealed class SignUpUserHandler(UserManager<User> userManager, SignInManager<User> signInManager, RoleManager<IdentityRole<int>> roleManager)
+    public sealed partial class SignUpUserHandler(UserManager<User> userManager, SignInManager<User> signInManager, RoleManager<IdentityRole<int>> roleManager, ILogger<SignUpUserHandler> logger)
         : IRequestHandler<SignUpUser, Result<SignUpUserResult, Exception>>
     {
         public async Task<Result<SignUpUserResult, Exception>> Handle(SignUpUser request, CancellationToken cancellationToken)
         {
+            LogExecutingSignUp(logger, request.Username);
             try
             {
                 var existingUser = await userManager.FindByNameAsync(request.Username);
@@ -49,6 +51,7 @@ namespace StargateAPI.Business.Commands
 
                 var roles = await userManager.GetRolesAsync(newUser);
 
+                LogSignUpSuccess(logger, request.Username, newUser.Id);
                 return Result<SignUpUserResult, Exception>.Ok(new SignUpUserResult
                 {
                     Id = newUser.Id,
@@ -58,9 +61,19 @@ namespace StargateAPI.Business.Commands
             }
             catch (Exception ex)
             {
+                LogSignUpError(logger, request.Username, ex);
                 return Result<SignUpUserResult, Exception>.Err(ex);
             }
         }
+
+        [LoggerMessage(LogLevel.Information, "Executing SignUp command for username: {Username}")]
+        private static partial void LogExecutingSignUp(ILogger logger, string username);
+
+        [LoggerMessage(LogLevel.Information, "SignUp command completed successfully for username: {Username}. Created user with ID: {Id}")]
+        private static partial void LogSignUpSuccess(ILogger logger, string username, int id);
+
+        [LoggerMessage(LogLevel.Error, "Error executing SignUp command for username: {Username}")]
+        private static partial void LogSignUpError(ILogger logger, string username, Exception exception);
     }
 
     public sealed class SignUpUserResult
