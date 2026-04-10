@@ -1,22 +1,45 @@
 using MediatR;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
 using StargateAPI.Business.Commands;
 using StargateAPI.Business.Data;
+using StargateAPI.Business.Pipeline;
 
 var builder = WebApplication.CreateBuilder(args);
-
- 
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddOpenApi();
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<IUserContext, UserContext>();
+
+builder.Services.AddAuthentication("BasicAuthentication")
+    .AddScheme<AuthenticationSchemeOptions, BasicAuthenticationHandler>("BasicAuthentication", null);
 
 builder.Services.AddSingleton<AuditSaveChangesInterceptor>();
-builder.Services.AddPooledDbContextFactory<StargateContext>((serviceProvider, options) => 
+
+builder.Services.AddDbContext<StargateContext>((serviceProvider, options) => 
     options.UseSqlite(builder.Configuration.GetConnectionString("StarbaseApiDatabase"))
            .AddInterceptors(serviceProvider.GetRequiredService<AuditSaveChangesInterceptor>())
-           .ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning)), 50);
+           .ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning)));
+
+builder.Services.AddDbContextFactory<StargateContext>((serviceProvider, options) => 
+    options.UseSqlite(builder.Configuration.GetConnectionString("StarbaseApiDatabase"))
+           .AddInterceptors(serviceProvider.GetRequiredService<AuditSaveChangesInterceptor>())
+           .ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning)), ServiceLifetime.Scoped);
+
+builder.Services.AddIdentity<User, IdentityRole<int>>(options =>
+{
+    options.Password.RequireDigit = false;
+    options.Password.RequiredLength = 3;
+    options.Password.RequireLowercase = false;
+    options.Password.RequireUppercase = false;
+    options.Password.RequireNonAlphanumeric = false;
+})
+    .AddEntityFrameworkStores<StargateContext>()
+    .AddDefaultTokenProviders();
 
 builder.Services.AddMediatR(cfg =>
 {
@@ -47,6 +70,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();

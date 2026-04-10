@@ -1,4 +1,5 @@
-using MediatR;
+﻿using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using StargateAPI.Business.Commands;
 using StargateAPI.Business.Queries;
@@ -8,6 +9,7 @@ namespace StargateAPI.Controllers
 {
    
     [ApiController]
+    [Authorize]
     [Route("[controller]")]
     public sealed class PersonController(IMediator mediator) : ControllerBase
     {
