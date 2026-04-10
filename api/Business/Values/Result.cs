@@ -1,6 +1,6 @@
 namespace StargateAPI.Business.Values
 {
-    public readonly struct Result<TValue, TError>
+    public readonly struct Result<TValue, TError> 
     {
         private readonly TValue? _value;
         private readonly TError? _error;

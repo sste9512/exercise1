@@ -13,7 +13,5 @@
         public DateTime? CareerStartDate { get; set; }
 
         public DateTime? CareerEndDate { get; set; }
-
-
     }
 }
